@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Debian 12, system Python standard library only; no third-party dependencies.
+# 这里不安装第三方依赖，降低 VPS 资源占用。
+
+APP_NAME="notify-panel"
+APP_DIR="/opt/${APP_NAME}"
+SERVICE_FILE="/etc/systemd/system/${APP_NAME}.service"
+
+if [ "$(id -u)" -ne 0 ]; then
+  echo "请用 root 运行：sudo bash install.sh"
+  exit 1
+fi
+
+if [ ! -f "./app.py" ]; then
+  echo "请在 app.py 所在目录运行本脚本。"
+  exit 1
+fi
+
+apt-get update
+apt-get install -y python3
+install -d -m 0755 "$APP_DIR"
+install -m 0644 ./app.py "$APP_DIR/app.py"
+
+if [ ! -f "$APP_DIR/config.env" ]; then
+  SECRET_KEY="$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')"
+  read -r -p "Telegram Bot Token: " TG_BOT_TOKEN
+  read -r -p "Telegram Chat ID: " TG_CHAT_ID
+  read -r -p "每天几点检查提醒 [09:00]: " CHECK_TIME
+  CHECK_TIME="${CHECK_TIME:-09:00}"
+  cat > "$APP_DIR/config.env" <<EOF
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=unused
+AUTH_ENABLED=false
+SECRET_KEY=${SECRET_KEY}
+TG_BOT_TOKEN=${TG_BOT_TOKEN}
+TG_CHAT_ID=${TG_CHAT_ID}
+HOST=127.0.0.1
+PORT=8000
+CHECK_TIME=${CHECK_TIME}
+PUSH_ON_START=true
+PUSH_LOG_RETENTION_DAYS=90
+EOF
+  chmod 600 "$APP_DIR/config.env"
+fi
+
+install -m 0644 ./notify-panel.service "$SERVICE_FILE"
+systemctl daemon-reload
+systemctl enable --now "$APP_NAME"
+systemctl restart "$APP_NAME"
+systemctl --no-pager --full status "$APP_NAME" || true
+
+echo
+echo "安装完成：ssh -L 8000:127.0.0.1:8000 root@你的 VPS_IP"
+echo "本地打开：http://127.0.0.1:8000"
+echo "配置文件：$APP_DIR/config.env"
+echo "数据文件：$APP_DIR/data.sqlite"
