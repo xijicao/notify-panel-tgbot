@@ -50,11 +50,38 @@ EOF
   chmod 600 "$APP_DIR/config.env"
 fi
 
-install -m 0644 "$SCRIPT_DIR/notify-panel.service" "$SERVICE_FILE"
+# 直接生成面板自己的 systemd 单元，避免不同环境下复制 service 文件失败。
+install -d -m 0755 "$(dirname "$SERVICE_FILE")"
+cat > "$SERVICE_FILE" <<EOF
+[Unit]
+Description=Telegram Notify Panel
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+WorkingDirectory=$APP_DIR
+ExecStart=/usr/bin/python3 $APP_DIR/app.py
+Environment=PYTHONUNBUFFERED=1
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+EOF
+chmod 0644 "$SERVICE_FILE"
+if [ ! -s "$SERVICE_FILE" ]; then
+  echo "无法创建 $SERVICE_FILE"
+  exit 1
+fi
 systemctl daemon-reload
-systemctl enable --now "$APP_NAME"
-systemctl restart "$APP_NAME"
-systemctl --no-pager --full status "$APP_NAME" || true
+systemctl enable "$APP_NAME.service"
+systemctl restart "$APP_NAME.service" 2>/dev/null || systemctl start "$APP_NAME.service"
+systemctl --no-pager --full status "$APP_NAME.service" || true
 
 echo
 echo "安装完成：ssh -L 8000:127.0.0.1:8000 root@你的 VPS_IP"
