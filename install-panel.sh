@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -Eeuo pipefail
+{ printf '%s\n' 'set -Eeuo pipefail'; tail -n +3 "$0"; } | tr -d '\r' | bash -s -- "$@"; exit $? # 兼容 GitHub 的 CRLF 换行
 
 # 独立的面板引导安装器：不依赖当前目录，也不会与其他项目的 install.sh 混淆。
 REPO_URL="https://github.com/xijicao/notify-panel-tgbot.git"

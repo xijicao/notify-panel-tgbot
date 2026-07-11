@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -euo pipefail
+{ printf '%s\n' 'set -euo pipefail'; tail -n +3 "$0"; } | tr -d '\r' | bash -s -- "$@"; exit $? # 兼容 GitHub 的 CRLF 换行
 
 # Debian 12, system Python standard library only; no third-party dependencies.
 # 这里不安装第三方依赖，降低 VPS 资源占用。
