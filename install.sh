@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-{ printf '%s\n' 'set -euo pipefail'; tail -n +3 "$0"; } | tr -d '\r' | bash -s -- "$@"; exit $? # 兼容 GitHub 的 CRLF 换行
+SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"; export NOTIFY_PANEL_SCRIPT_DIR="$SCRIPT_DIR"; { printf '%s\n' 'set -euo pipefail'; tail -n +3 "$0"; } | tr -d '\r' | bash -s -- "$@"; exit $? # 兼容 GitHub 的 CRLF 换行
 
 # Debian 12, system Python standard library only; no third-party dependencies.
 # 这里不安装第三方依赖，降低 VPS 资源占用。
@@ -7,7 +7,11 @@
 APP_NAME="notify-panel"
 APP_DIR="/opt/${APP_NAME}"
 SERVICE_FILE="/etc/systemd/system/${APP_NAME}.service"
-SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+if [ -n "${NOTIFY_PANEL_SCRIPT_DIR:-}" ]; then
+  SCRIPT_DIR="$NOTIFY_PANEL_SCRIPT_DIR"
+else
+  SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]:-$0}")" && pwd)"
+fi
 
 if [ "$(id -u)" -ne 0 ]; then
   echo "请用 root 运行：sudo bash install.sh"
