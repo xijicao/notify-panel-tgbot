@@ -7,21 +7,22 @@ set -euo pipefail
 APP_NAME="notify-panel"
 APP_DIR="/opt/${APP_NAME}"
 SERVICE_FILE="/etc/systemd/system/${APP_NAME}.service"
+SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 
 if [ "$(id -u)" -ne 0 ]; then
   echo "请用 root 运行：sudo bash install.sh"
   exit 1
 fi
 
-if [ ! -f "./app.py" ]; then
-  echo "请在 app.py 所在目录运行本脚本。"
+if [ ! -f "$SCRIPT_DIR/app.py" ]; then
+  echo "找不到 $SCRIPT_DIR/app.py，请确认源码完整。"
   exit 1
 fi
 
 apt-get update
 apt-get install -y python3
 install -d -m 0755 "$APP_DIR"
-install -m 0644 ./app.py "$APP_DIR/app.py"
+install -m 0644 "$SCRIPT_DIR/app.py" "$APP_DIR/app.py"
 
 if [ ! -f "$APP_DIR/config.env" ]; then
   SECRET_KEY="$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')"
@@ -45,7 +46,7 @@ EOF
   chmod 600 "$APP_DIR/config.env"
 fi
 
-install -m 0644 ./notify-panel.service "$SERVICE_FILE"
+install -m 0644 "$SCRIPT_DIR/notify-panel.service" "$SERVICE_FILE"
 systemctl daemon-reload
 systemctl enable --now "$APP_NAME"
 systemctl restart "$APP_NAME"
